@@ -33,25 +33,35 @@ CXX="${CXX:-${CROSS_PREFIX}g++}"
 rm -rf dist build
 mkdir -p "$DIST_DIR" build
 
-# Sources: plugin entry + Open303 + GuitarML (populated during implementation).
-SRCS=(src/dsp/plugin.cpp)
-# shellcheck disable=SC2086
-if compgen -G "src/dsp/open303/*.cpp" > /dev/null; then
-    SRCS+=($(ls src/dsp/open303/*.cpp))
-fi
-if compgen -G "src/dsp/guitarml/*.cpp" > /dev/null; then
-    SRCS+=($(ls src/dsp/guitarml/*.cpp))
-fi
-if compgen -G "src/dsp/guitarml/neural_utils/*.cpp" > /dev/null; then
-    SRCS+=($(ls src/dsp/guitarml/neural_utils/*.cpp))
-fi
+# Sources: plugin entry + Open303 + GuitarML.
+# Open303 also includes a C file (fft4g.c) — built via the C compiler.
+CC="${CC:-${CROSS_PREFIX}gcc}"
 
-INCLUDES=(-Isrc/dsp -Isrc/dsp/open303 -Isrc/dsp/guitarml -Isrc/dsp/deps)
+# Compile C sources first.
+C_OBJS=()
+for c in src/dsp/open303/*.c; do
+    obj="build/$(basename "${c%.c}").o"
+    echo "  CC  $c"
+    "$CC" -O3 -fPIC -std=c99 -c "$c" -o "$obj"
+    C_OBJS+=("$obj")
+done
+
+# C++ sources.
+CXX_SRCS=(src/dsp/plugin.cpp src/dsp/guitarml/guitarml_amp.cpp)
+for f in src/dsp/open303/*.cpp; do CXX_SRCS+=("$f"); done
+
+# Eigen is vendored at deps/Eigen/Eigen/... so deps/Eigen is the include root
+# for "#include <Eigen/Dense>". RTNeural headers use a configurable backend;
+# we force Eigen (matches jc303 via chowdsp).
+INCLUDES=(-Isrc/dsp -Isrc/dsp/open303 -Isrc/dsp/guitarml \
+          -Isrc/dsp/deps -Isrc/dsp/deps/Eigen -Isrc/dsp/deps/RTNeural)
 
 echo "Compiling DSP..."
-"$CXX" -O3 -fPIC -shared -std=c++17 -Wall -Wextra -Wno-unused-parameter \
+"$CXX" -O3 -fPIC -shared -std=c++17 \
+    -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare \
+    -DRTNEURAL_USE_EIGEN=1 -DRTNEURAL_NO_DEBUG=1 \
     "${INCLUDES[@]}" \
-    "${SRCS[@]}" \
+    "${CXX_SRCS[@]}" "${C_OBJS[@]}" \
     -o build/dsp.so \
     -lm
 
