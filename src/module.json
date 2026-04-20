@@ -1,0 +1,79 @@
+{
+  "id": "303",
+  "name": "303",
+  "abbrev": "303",
+  "version": "0.1.0",
+  "description": "TB-303 emulator (Open303 + Devilfish + GuitarML overdrive)",
+  "author": "Robin Schmidt / midilab / Charles Vestal",
+  "license": "GPL-3.0",
+  "ui": "ui.js",
+  "dsp": "dsp.so",
+  "api_version": 2,
+  "capabilities": {
+    "audio_out": true,
+    "audio_in": false,
+    "midi_in": true,
+    "midi_out": false,
+    "chainable": true,
+    "component_type": "sound_generator",
+    "ui_hierarchy": {
+      "levels": {
+        "root": {
+          "name": "303",
+          "params": [
+            { "key": "cutoff",       "label": "Cutoff",    "type": "float", "min": 0.0, "max": 1.0, "default": 0.5,  "step": 0.02, "unit": "%" },
+            { "key": "resonance",    "label": "Resonance", "type": "float", "min": 0.0, "max": 1.0, "default": 0.5,  "step": 0.02, "unit": "%" },
+            { "key": "env_mod",      "label": "Env Mod",   "type": "float", "min": 0.0, "max": 1.0, "default": 0.5,  "step": 0.02, "unit": "%" },
+            { "key": "decay",        "label": "Decay",     "type": "float", "min": 0.0, "max": 1.0, "default": 0.5,  "step": 0.02, "unit": "%" },
+            { "key": "accent",       "label": "Accent",    "type": "float", "min": 0.0, "max": 1.0, "default": 0.5,  "step": 0.02, "unit": "%" },
+            { "key": "volume",       "label": "Volume",    "type": "float", "min": 0.0, "max": 1.0, "default": 0.8,  "step": 0.02, "unit": "%" },
+            { "key": "waveform",     "label": "Waveform",  "type": "enum",  "options": ["Saw", "Square"], "default": 0 },
+            { "key": "tuning",       "label": "Tuning",    "type": "float", "min": 0.0, "max": 1.0, "default": 0.5,  "step": 0.01 },
+            { "level": "devilfish",  "label": "Devilfish Mods" },
+            { "level": "overdrive",  "label": "Overdrive" }
+          ],
+          "knobs": [
+            "cutoff",
+            "resonance",
+            "env_mod",
+            "decay",
+            "accent",
+            "volume",
+            "overdrive_level",
+            "overdrive_dry_wet"
+          ]
+        },
+        "devilfish": {
+          "name": "Devilfish Mods",
+          "params": [
+            { "key": "devil_mod_switch",  "label": "Enable",       "type": "enum",  "options": ["Off", "On"], "default": 0 },
+            { "key": "normal_decay",      "label": "Normal Decay", "type": "float", "min": 0.0, "max": 1.0, "default": 0.5, "step": 0.02, "unit": "%" },
+            { "key": "accent_decay",      "label": "Accent Decay", "type": "float", "min": 0.0, "max": 1.0, "default": 0.5, "step": 0.02, "unit": "%" },
+            { "key": "feedback_hpf",      "label": "Feedback HPF", "type": "float", "min": 0.0, "max": 1.0, "default": 0.5, "step": 0.02, "unit": "%" },
+            { "key": "soft_attack",       "label": "Soft Attack",  "type": "float", "min": 0.0, "max": 1.0, "default": 0.0, "step": 0.02, "unit": "%" },
+            { "key": "slide_time",        "label": "Slide Time",   "type": "float", "min": 0.0, "max": 1.0, "default": 0.3, "step": 0.02, "unit": "%" },
+            { "key": "tanh_shaper_drive", "label": "Shaper Drive", "type": "float", "min": 0.0, "max": 1.0, "default": 0.0, "step": 0.02, "unit": "%" }
+          ],
+          "navigate_to": "root"
+        },
+        "overdrive": {
+          "name": "Overdrive",
+          "params": [
+            { "key": "overdrive_switch",   "label": "Enable",   "type": "enum",  "options": ["Off", "On"], "default": 0 },
+            { "key": "overdrive_level",    "label": "Level",    "type": "float", "min": 0.0, "max": 1.0, "default": 0.5, "step": 0.02, "unit": "%" },
+            { "key": "overdrive_dry_wet",  "label": "Dry/Wet",  "type": "float", "min": 0.0, "max": 1.0, "default": 0.5, "step": 0.02, "unit": "%" },
+            { "level": "overdrive_model",  "label": "Model" }
+          ],
+          "navigate_to": "root"
+        },
+        "overdrive_model": {
+          "name": "Overdrive Model",
+          "label": "Select Model",
+          "items_param": "overdrive_model_list",
+          "select_param": "overdrive_model",
+          "navigate_to": "overdrive"
+        }
+      }
+    }
+  }
+}
