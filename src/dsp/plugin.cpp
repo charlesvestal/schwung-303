@@ -268,9 +268,84 @@ static void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) 
     }
 }
 
+// Minimal JSON helpers for state blob parsing. Naive strstr — sufficient for
+// our flat-object state format (no nested objects with colliding keys).
+static int json_extract_number(const char *json, const char *key, double *out) {
+    char search[64];
+    std::snprintf(search, sizeof(search), "\"%s\":", key);
+    const char *pos = std::strstr(json, search);
+    if (!pos) return -1;
+    pos += std::strlen(search);
+    while (*pos == ' ' || *pos == '\t') pos++;
+    char *endp = nullptr;
+    double v = std::strtod(pos, &endp);
+    if (endp == pos) return -1;
+    *out = v;
+    return 0;
+}
+
+static int json_extract_string(const char *json, const char *key, char *buf, size_t buf_len) {
+    char search[64];
+    std::snprintf(search, sizeof(search), "\"%s\":", key);
+    const char *pos = std::strstr(json, search);
+    if (!pos) return -1;
+    pos += std::strlen(search);
+    while (*pos == ' ' || *pos == '\t') pos++;
+    if (*pos != '"') return -1;
+    pos++;
+    const char *end = std::strchr(pos, '"');
+    if (!end) return -1;
+    size_t n = static_cast<size_t>(end - pos);
+    if (n >= buf_len) n = buf_len - 1;
+    std::memcpy(buf, pos, n);
+    buf[n] = '\0';
+    return 0;
+}
+
 static void v2_set_param(void *instance, const char *key, const char *val) {
     if (!instance || !key || !val) return;
     P303 *p = static_cast<P303 *>(instance);
+
+    // State restore: flat JSON object. devil_mod_switch must be applied first
+    // because it resets decayMin/decayMax — otherwise a stored decay would be
+    // remapped to the wrong range.
+    if (!std::strcmp(key, "state")) {
+        double d;
+        char sbuf[128];
+        char vbuf[32];
+
+        if (json_extract_number(val, "devil_mod_switch", &d) == 0) {
+            std::snprintf(vbuf, sizeof(vbuf), "%d", static_cast<int>(d));
+            v2_set_param(instance, "devil_mod_switch", vbuf);
+        }
+
+        static const char *const float_keys[] = {
+            "cutoff", "resonance", "env_mod", "decay", "accent", "volume", "tuning",
+            "normal_decay", "accent_decay", "feedback_hpf", "soft_attack",
+            "slide_time", "tanh_shaper_drive", "overdrive_level", "overdrive_dry_wet",
+            nullptr
+        };
+        for (int i = 0; float_keys[i]; i++) {
+            if (json_extract_number(val, float_keys[i], &d) == 0) {
+                std::snprintf(vbuf, sizeof(vbuf), "%.6f", d);
+                v2_set_param(instance, float_keys[i], vbuf);
+            }
+        }
+
+        static const char *const int_keys[] = { "waveform", "overdrive_switch", nullptr };
+        for (int i = 0; int_keys[i]; i++) {
+            if (json_extract_number(val, int_keys[i], &d) == 0) {
+                std::snprintf(vbuf, sizeof(vbuf), "%d", static_cast<int>(d));
+                v2_set_param(instance, int_keys[i], vbuf);
+            }
+        }
+
+        if (json_extract_string(val, "overdrive_model", sbuf, sizeof(sbuf)) == 0) {
+            v2_set_param(instance, "overdrive_model", sbuf);
+        }
+        return;
+    }
+
     const float fv = static_cast<float>(std::atof(val));
 
     if      (!std::strcmp(key, "cutoff"))     { p->n_cutoff    = fv; apply_cutoff(p); }
@@ -312,6 +387,35 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
 
     auto emit = [&](float f) { return std::snprintf(buf, buf_len, "%.4f", f); };
     auto emit_i = [&](int i) { return std::snprintf(buf, buf_len, "%d", i); };
+
+    // State save: serialize every param to a flat JSON object. Consumed by the
+    // Shadow UI autosave / preset save to capture knob positions across reboots.
+    if (!std::strcmp(key, "state")) {
+        int n = 0;
+        #define SA(...) do { if (n < buf_len) n += std::snprintf(buf + n, static_cast<size_t>(buf_len - n), __VA_ARGS__); } while (0)
+        SA("{\"cutoff\":%.6f", static_cast<double>(p->n_cutoff));
+        SA(",\"resonance\":%.6f", static_cast<double>(p->n_resonance));
+        SA(",\"env_mod\":%.6f", static_cast<double>(p->n_env_mod));
+        SA(",\"decay\":%.6f", static_cast<double>(p->n_decay));
+        SA(",\"accent\":%.6f", static_cast<double>(p->n_accent));
+        SA(",\"volume\":%.6f", static_cast<double>(p->n_volume));
+        SA(",\"tuning\":%.6f", static_cast<double>(p->n_tuning));
+        SA(",\"waveform\":%d", p->waveform);
+        SA(",\"devil_mod_switch\":%d", p->devil_mod_switch);
+        SA(",\"normal_decay\":%.6f", static_cast<double>(p->n_normal_decay));
+        SA(",\"accent_decay\":%.6f", static_cast<double>(p->n_accent_decay));
+        SA(",\"feedback_hpf\":%.6f", static_cast<double>(p->n_feedback_hpf));
+        SA(",\"soft_attack\":%.6f", static_cast<double>(p->n_soft_attack));
+        SA(",\"slide_time\":%.6f", static_cast<double>(p->n_slide_time));
+        SA(",\"tanh_shaper_drive\":%.6f", static_cast<double>(p->n_tanh_shaper_drive));
+        SA(",\"overdrive_switch\":%d", p->overdrive_switch);
+        SA(",\"overdrive_level\":%.6f", static_cast<double>(p->n_overdrive_level));
+        SA(",\"overdrive_dry_wet\":%.6f", static_cast<double>(p->n_overdrive_dry_wet));
+        SA(",\"overdrive_model\":\"%s\"", p->overdrive_model.c_str());
+        SA("%s", "}");
+        #undef SA
+        return n;
+    }
 
     if (!std::strcmp(key, "cutoff"))     return emit(p->n_cutoff);
     if (!std::strcmp(key, "resonance"))  return emit(p->n_resonance);
