@@ -219,7 +219,7 @@ static void* v2_create(const char *module_dir, const char *json_defaults) {
     if (!p->model_list.empty()) {
         p->overdrive_model = p->model_list.front();
         for (const auto &m : p->model_list) {
-            if (m == "jc303/TS9_DriveKnob" || m == "proteus/TS9_DriveKnob") {
+            if (m == "jc303/TS9_DriveKnob") {
                 p->overdrive_model = m;
                 break;
             }

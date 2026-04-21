@@ -67,10 +67,9 @@
         {
             "heading": "Overdrive",
             "body": [
-                "Neural-network amp/pedal modelling via RTNeural. 197 models",
-                "from the GuitarML Proteus Tone Packs are bundled:",
-                "  jc303/*   37 classics (TS9, RAT, Big Muff, …)",
-                "  proteus/* 160 additional amps + pedals",
+                "Neural-network amp/pedal modelling via RTNeural. 37 classic",
+                "amp/pedal captures (TS9, RAT, Big Muff, Princeton, Mesa Mini",
+                "Rec, Dumble Kit, etc.) — the jc303 default set.",
                 "",
                 "Off:  bypass (no CPU cost).",
                 "On:   signal runs through the chosen model. Use Drive Level",
