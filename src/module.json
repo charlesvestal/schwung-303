@@ -2,7 +2,7 @@
   "id": "303",
   "name": "303",
   "abbrev": "303",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TB-303 emulator (Open303 + Devilfish + GuitarML overdrive)",
   "author": "Robin Schmidt / midilab / Charles Vestal",
   "license": "GPL-3.0",
