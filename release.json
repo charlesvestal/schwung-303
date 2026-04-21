@@ -1,4 +1,7 @@
 {
-  "version": "0.1.0",
-  "download_url": "https://github.com/charlesvestal/schwung-303/releases/download/v0.1.0/303-module.tar.gz"
+    "version": "0.1.0",
+    "download_url": "https://github.com/charlesvestal/schwung-303/releases/download/v0.1.0/303-module.tar.gz",
+    "name": "303",
+    "description": "TB-303 emulator (Open303 + Devilfish + GuitarML overdrive)",
+    "repo_url": "https://github.com/charlesvestal/schwung-303"
 }
