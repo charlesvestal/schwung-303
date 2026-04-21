@@ -38,7 +38,7 @@ cd schwung-303
 
 ## Overdrive
 
-197 neural-network amp/pedal models (37 from jc303's JC303 pack + 160 from the GuitarML Proteus Tone Packs) are bundled and selectable from the Shadow UI. Default model is `jc303/TS9_DriveKnob`. Inference is done with [RTNeural](https://github.com/jatinchowdhury18/RTNeural) (Eigen backend) — no framework dependencies.
+37 neural-network amp/pedal models — jc303's default set, captured by the [GuitarML](https://github.com/GuitarML) project (TS9, RAT, Big Muff, Princeton, Mesa Mini Rec, Dumble Kit, and friends). Selectable from the Shadow UI, default is `jc303/TS9_DriveKnob`. Inference via [RTNeural](https://github.com/jatinchowdhury18/RTNeural) with the Eigen backend — no framework dependencies.
 
 Turn overdrive off to bypass the RNN entirely (zero CPU cost).
 
@@ -62,7 +62,6 @@ This module is a port, not original work. All DSP lineage acknowledged:
 - **JC-303** — midilab ([midilab/jc303](https://github.com/midilab/jc303)), GPL-3.0, source of the Devilfish extensions and the integrated GuitarML overdrive path
 - **GuitarML BYOD** — [GuitarML](https://github.com/GuitarML) / Jatin Chowdhury, MIT license, neural amp modelling framework
 - **RTNeural** — [jatinchowdhury18/RTNeural](https://github.com/jatinchowdhury18/RTNeural), BSD-3-Clause, real-time neural network inference
-- **Proteus Tone Packs** — [GuitarML/Proteus_Tone_Packs](https://github.com/GuitarML/Proteus_Tone_Packs), bundled pre-trained amp/pedal models
 - **Eigen** — linear algebra dependency of RTNeural, MPL2
 - **nlohmann/json** — JSON parsing, MIT license
 
