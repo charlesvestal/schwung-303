@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build module
+        run: ./scripts/build.sh
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/303-module.tar.gz
+          generate_release_notes: true
+
+      - name: Update release.json on main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          VERSION="${{ steps.version.outputs.version }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/303-module.tar.gz"
+          cat > release.json <<EOF
+          {
+              "version": "${VERSION}",
+              "download_url": "${URL}",
+              "name": "303",
+              "description": "TB-303 emulator (Open303 + Devilfish + GuitarML overdrive)",
+              "repo_url": "https://github.com/${{ github.repository }}"
+          }
+          EOF
+          git add release.json
+          git diff --cached --quiet && exit 0
+          git commit -m "release: v${VERSION}"
+          git push origin main
