@@ -246,10 +246,26 @@ static void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) 
     } else if (status == 0x80) { // note-off
         const int note = msg[1] & 0x7F;
         p->engine.noteOn(note, 0, 0.0);
-    } else if (status == 0xB0 && len >= 3 && msg[1] == 123) { // CC 123 — all notes off
-        p->engine.allNotesOff();
+    } else if (status == 0xB0 && len >= 3) {
+        // CC mapping for the 8 front-panel params. Conventions honored where
+        // they exist (74=cutoff, 71=resonance, 75=decay, 7=volume); GM2 effect
+        // controllers (12/13) for overdrive; GP1 (16) for accent.
+        const uint8_t cc  = msg[1] & 0x7F;
+        const uint8_t val = msg[2] & 0x7F;
+        const float nv = val / 127.0f;
+        switch (cc) {
+            case 74: p->n_cutoff    = nv; apply_cutoff(p);    break;
+            case 71: p->n_resonance = nv; apply_resonance(p); break;
+            case 70: p->n_env_mod   = nv; apply_env_mod(p);   break;
+            case 75: p->n_decay     = nv; apply_decay(p);     break;
+            case 16: p->n_accent    = nv; apply_accent(p);    break;
+            case 7:  p->n_volume    = nv; apply_volume(p);    break;
+            case 12: p->n_overdrive_level   = nv; break;
+            case 13: p->n_overdrive_dry_wet = nv; break;
+            case 123: p->engine.allNotesOff(); break;
+            default: break;
+        }
     }
-    // ignore everything else (pitch bend / CC routed via set_param)
 }
 
 static void v2_set_param(void *instance, const char *key, const char *val) {
@@ -328,7 +344,87 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
         return pos;
     }
 
-    return 0;
+    // Shadow UI queries these directly on the DSP plugin.
+    if (!std::strcmp(key, "ui_hierarchy")) {
+        static const char *hierarchy =
+            "{"
+            "\"modes\":null,"
+            "\"levels\":{"
+                "\"root\":{"
+                    "\"name\":\"303\","
+                    "\"children\":null,"
+                    "\"knobs\":[\"cutoff\",\"resonance\",\"env_mod\",\"decay\","
+                               "\"accent\",\"volume\",\"overdrive_level\",\"overdrive_dry_wet\"],"
+                    "\"params\":["
+                        "\"cutoff\",\"resonance\",\"env_mod\",\"decay\","
+                        "\"accent\",\"volume\",\"waveform\",\"tuning\","
+                        "{\"level\":\"devilfish\",\"label\":\"Devilfish Mods\"},"
+                        "{\"level\":\"overdrive\",\"label\":\"Overdrive\"}"
+                    "]"
+                "},"
+                "\"devilfish\":{"
+                    "\"name\":\"Devilfish Mods\","
+                    "\"children\":null,"
+                    "\"knobs\":[\"normal_decay\",\"accent_decay\",\"feedback_hpf\","
+                               "\"soft_attack\",\"slide_time\",\"tanh_shaper_drive\"],"
+                    "\"params\":[\"devil_mod_switch\",\"normal_decay\",\"accent_decay\","
+                                "\"feedback_hpf\",\"soft_attack\",\"slide_time\",\"tanh_shaper_drive\"],"
+                    "\"navigate_to\":\"root\""
+                "},"
+                "\"overdrive\":{"
+                    "\"name\":\"Overdrive\","
+                    "\"children\":null,"
+                    "\"knobs\":[\"overdrive_level\",\"overdrive_dry_wet\"],"
+                    "\"params\":[\"overdrive_switch\",\"overdrive_level\",\"overdrive_dry_wet\","
+                                "{\"level\":\"overdrive_model\",\"label\":\"Model\"}],"
+                    "\"navigate_to\":\"root\""
+                "},"
+                "\"overdrive_model\":{"
+                    "\"name\":\"Overdrive Model\","
+                    "\"label\":\"Select Model\","
+                    "\"items_param\":\"overdrive_model_list\","
+                    "\"select_param\":\"overdrive_model\","
+                    "\"navigate_to\":\"overdrive\""
+                "}"
+            "}"
+            "}";
+        const int len = static_cast<int>(std::strlen(hierarchy));
+        if (len >= buf_len) return -1;
+        std::memcpy(buf, hierarchy, len + 1);
+        return len;
+    }
+
+    if (!std::strcmp(key, "chain_params")) {
+        static const char *cp =
+            "["
+            "{\"key\":\"cutoff\",\"name\":\"Cutoff\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"resonance\",\"name\":\"Resonance\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"env_mod\",\"name\":\"Env Mod\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"decay\",\"name\":\"Decay\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"accent\",\"name\":\"Accent\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"volume\",\"name\":\"Volume\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.8},"
+            "{\"key\":\"waveform\",\"name\":\"Waveform\",\"type\":\"enum\",\"options\":[\"Saw\",\"Square\"],\"default\":0},"
+            "{\"key\":\"tuning\",\"name\":\"Tuning\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.01,\"default\":0.5},"
+            "{\"key\":\"devil_mod_switch\",\"name\":\"Devilfish\",\"type\":\"enum\",\"options\":[\"Off\",\"On\"],\"default\":0},"
+            "{\"key\":\"normal_decay\",\"name\":\"Normal Decay\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"accent_decay\",\"name\":\"Accent Decay\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"feedback_hpf\",\"name\":\"Feedback HPF\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"soft_attack\",\"name\":\"Soft Attack\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0},"
+            "{\"key\":\"slide_time\",\"name\":\"Slide Time\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.3},"
+            "{\"key\":\"tanh_shaper_drive\",\"name\":\"Shaper Drive\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0},"
+            "{\"key\":\"overdrive_switch\",\"name\":\"Overdrive\",\"type\":\"enum\",\"options\":[\"Off\",\"On\"],\"default\":0},"
+            "{\"key\":\"overdrive_level\",\"name\":\"Drive Level\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
+            "{\"key\":\"overdrive_dry_wet\",\"name\":\"Dry/Wet\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5}"
+            "]";
+        const int len = static_cast<int>(std::strlen(cp));
+        if (len >= buf_len) return -1;
+        std::memcpy(buf, cp, len + 1);
+        return len;
+    }
+
+    if (!std::strcmp(key, "name")) return std::snprintf(buf, buf_len, "303");
+
+    return -1;
 }
 
 static int v2_get_error(void *instance, char *buf, int buf_len) {

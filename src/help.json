@@ -1,0 +1,92 @@
+{
+    "title": "303",
+    "subtitle": "TB-303 emulator (Open303 + Devilfish + GuitarML overdrive)",
+    "sections": [
+        {
+            "heading": "Overview",
+            "body": [
+                "Monophonic bass synth based on Robin Schmidt's Open303 engine,",
+                "with midilab's Devilfish-inspired extensions and GuitarML's",
+                "neural-network overdrive (197 amp/pedal models bundled).",
+                "",
+                "No sequencer — drive it with any MIDI source. Pairs well with",
+                "TB-3PO in a shadow slot for generative acid basslines."
+            ]
+        },
+        {
+            "heading": "Knobs (8 front panel)",
+            "body": [
+                "1  Cutoff       — filter cutoff (exp 314–2394 Hz)",
+                "2  Resonance    — filter resonance (0–100%)",
+                "3  Env Mod      — envelope → cutoff amount",
+                "4  Decay        — main envelope decay",
+                "5  Accent       — accent amount",
+                "6  Volume       — output level",
+                "7  Drive Level  — overdrive pre-gain (also input for",
+                "                 conditioned GuitarML models)",
+                "8  Dry/Wet      — overdrive blend (0 = bypass)"
+            ]
+        },
+        {
+            "heading": "MIDI",
+            "body": [
+                "Notes: standard note-on / note-off drive pitch and gate.",
+                "Accent: velocity ≥ 100 triggers Open303's accent envelope.",
+                "Slide:  overlapping notes (next note-on before previous",
+                "        note-off) triggers legato slide — matches TB-3PO's",
+                "        emission convention natively.",
+                "",
+                "CC map (honors GM2/MPE conventions where applicable):",
+                "  CC 74  Cutoff",
+                "  CC 71  Resonance",
+                "  CC 70  Env Mod",
+                "  CC 75  Decay",
+                "  CC 16  Accent",
+                "  CC 7   Volume",
+                "  CC 12  Overdrive Level",
+                "  CC 13  Overdrive Dry/Wet",
+                "  CC 123 All Notes Off"
+            ]
+        },
+        {
+            "heading": "Devilfish Mods",
+            "body": [
+                "Off: stock 303 behavior. Mod knobs are inert.",
+                "On:  Devilfish-inspired extensions from the real TB-303 mod",
+                "     kit, implemented in the Open303 engine.",
+                "",
+                "     Normal Decay   30 ms – 3 s (stock: fixed ~1.2 s)",
+                "     Accent Decay   30 ms – 3 s (stock: fixed 200 ms)",
+                "     Feedback HPF   cuts bass from filter self-feedback",
+                "                    — most audible at high resonance",
+                "     Soft Attack    0.3 ms – 3 s attack for non-accented notes",
+                "     Slide Time     2 – 360 ms",
+                "     Shaper Drive   tanh waveshaper before the filter"
+            ]
+        },
+        {
+            "heading": "Overdrive",
+            "body": [
+                "Neural-network amp/pedal modelling via RTNeural. 197 models",
+                "from the GuitarML Proteus Tone Packs are bundled:",
+                "  jc303/*   37 classics (TS9, RAT, Big Muff, …)",
+                "  proteus/* 160 additional amps + pedals",
+                "",
+                "Off:  bypass (no CPU cost).",
+                "On:   signal runs through the chosen model. Use Drive Level",
+                "      to push harder; use Dry/Wet to blend with clean.",
+                "      Default model: jc303/TS9_DriveKnob."
+            ]
+        },
+        {
+            "heading": "Credits",
+            "body": [
+                "Open303 engine: Robin Schmidt (MIT)",
+                "Devilfish mod params: midilab / jc303 (GPL-3.0)",
+                "Neural overdrive: GuitarML BYOD (MIT) via RTNeural (BSD-3)",
+                "Tone models: GuitarML Proteus Tone Packs",
+                "Schwung port: Charles Vestal — GPL-3.0"
+            ]
+        }
+    ]
+}
