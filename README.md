@@ -1,6 +1,6 @@
 # 303 — TB-303 Emulator for Schwung
 
-A monophonic TB-303 emulator sound generator for [Schwung](https://github.com/charlesvestal/schwung) on Ableton Move. Open303 DSP core, Devilfish-inspired modifications, and neural-network overdrive with 197 amp/pedal models.
+A monophonic TB-303 emulator sound generator for [Schwung](https://github.com/charlesvestal/schwung) on Ableton Move. Open303 DSP core, Devilfish-inspired modifications, and a lightweight two-model drive stage (Soft tanh + ProCo RAT port).
 
 No built-in sequencer — drive it with any MIDI source. Pairs naturally with [schwung-tb3po](https://github.com/charlesvestal/schwung-tb3po) for generative acid basslines.
 
@@ -32,15 +32,18 @@ cd schwung-303
 | 70 | Env Mod |
 | 16 | Accent |
 | 7  | Volume |
-| 12 | Overdrive Level |
-| 13 | Overdrive Dry/Wet |
+| 12 | Drive |
+| 13 | Mix |
 | 123 | All Notes Off |
 
-## Overdrive
+## Drive
 
-37 neural-network amp/pedal models — jc303's default set, captured by the [GuitarML](https://github.com/GuitarML) project (TS9, RAT, Big Muff, Princeton, Mesa Mini Rec, Dumble Kit, and friends). Selectable from the Shadow UI, default is `jc303/TS9_DriveKnob`. Inference via [RTNeural](https://github.com/jatinchowdhury18/RTNeural) with the Eigen backend — no framework dependencies.
+Two selectable saturation models under the Drive submenu:
 
-Turn overdrive off to bypass the RNN entirely (zero CPU cost).
+- **Soft** — tilt-EQ + 2x oversampled asymmetric tanh. Generic warm softclip, neutral flavor. Good for gentle thickening.
+- **RAT** — ported from [davemollen/dm-Rat](https://github.com/davemollen/dm-Rat) (GPL-3.0). Distortion-modulated 3rd-order op-amp IIR → algebraic waveshaper `x/(1+x⁴)^(1/4)` around 2x oversampling → fixed-mid tone stack. Aggressive, gritty, distinctively ProCo RAT.
+
+`Drive = 0` fully bypasses the stage (zero CPU cost). `Mix` blends with the clean synth signal.
 
 ## Devilfish Mods
 
@@ -50,7 +53,7 @@ Six Devilfish-inspired parameters, implemented inside the Open303 engine by jc30
 - **Feedback HPF** cuts low end from the filter's self-feedback
 - **Soft Attack** slows the envelope attack for non-accented notes
 - **Slide Time** extends the slide range
-- **Shaper Drive** controls a pre-filter tanh waveshaper
+- **Shaper Drive** controls a pre-filter tanh waveshaper inside the square-wave wavetable (distinct from the post-synth Drive stage above)
 
 Toggle off to restore stock 303 values.
 
@@ -58,17 +61,14 @@ Toggle off to restore stock 303 values.
 
 This module is a port, not original work. All DSP lineage acknowledged:
 
-- **Open303** engine — Robin Schmidt ([RobinSchmidt/Open303](https://github.com/RobinSchmidt/Open303)), MIT license
-- **JC-303** — midilab ([midilab/jc303](https://github.com/midilab/jc303)), GPL-3.0, source of the Devilfish extensions and the integrated GuitarML overdrive path
-- **GuitarML BYOD** — [GuitarML](https://github.com/GuitarML) / Jatin Chowdhury, MIT license, neural amp modelling framework
-- **RTNeural** — [jatinchowdhury18/RTNeural](https://github.com/jatinchowdhury18/RTNeural), BSD-3-Clause, real-time neural network inference
-- **Eigen** — linear algebra dependency of RTNeural, MPL2
-- **nlohmann/json** — JSON parsing, MIT license
+- **Open303** engine — Robin Schmidt ([RobinSchmidt/Open303](https://github.com/RobinSchmidt/Open303)), MIT license. Original license preserved at `src/dsp/open303/LICENSE`.
+- **JC-303** — midilab ([midilab/jc303](https://github.com/midilab/jc303)), GPL-3.0, source of the Devilfish extensions to the Open303 engine.
+- **dm-Rat** — Dave Mollen ([davemollen/dm-Rat](https://github.com/davemollen/dm-Rat)), GPL-3.0. The RAT drive model (`src/dsp/drive.h`, `namespace drive::rat`) is a direct port of the Rust DSP in `rat/src/{clipper,op_amp,tone}.rs` — op-amp s-domain coefficients, bilinear transform, 3rd-order IIR, algebraic clipper, and tone stack. Oversampling reduced from 8x FIR to 2x biquad to fit the embedded CPU budget.
 
 Schwung port and glue code: Charles Vestal.
 
 ## License
 
-**GPL-3.0** — inherited from jc303, which is the direct upstream for the DSP graph (Open303 core + Devilfish extensions + GuitarML integration). The Open303 engine core itself remains MIT (Robin Schmidt's original licensing is preserved in `src/dsp/open303/LICENSE`).
+**GPL-3.0** — inherited from jc303 (Devilfish extensions) and dm-Rat (RAT drive model). The Open303 engine core itself remains MIT (Robin Schmidt's original licensing is preserved in `src/dsp/open303/LICENSE`).
 
 See [LICENSE](LICENSE) for the full GPL-3.0 text.

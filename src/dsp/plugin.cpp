@@ -2,11 +2,11 @@
 //
 // Wires:
 //   rosic::Open303 (monophonic 303 engine + Devilfish mods)
-//     → guitarml::GuitarMLAmp (RNN overdrive, optional)
-//     → dry/wet mix
+//     → drive::Drive (Soft tanh / RAT ProCo-style; user-selectable model)
 //     → stereo int16 interleaved
 //
-// GPL-3.0, inherited from midilab/jc303 (whose Open303 core is MIT).
+// GPL-3.0, inherited from midilab/jc303 (whose Open303 core is MIT) and
+// davemollen/dm-Rat (GPL-3.0) for the RAT drive model.
 
 #include <algorithm>
 #include <cmath>
@@ -14,14 +14,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <dirent.h>
 #include <string>
-#include <sys/stat.h>
-#include <vector>
 
 #include "open303/rosic_Open303.h"
-
-#include "guitarml/guitarml_amp.h"
+#include "drive.h"
 
 // ---------------------------------------------------------------------------
 // Host/plugin API (v1+v2 inlined to avoid header path coupling)
@@ -84,10 +80,9 @@ static inline int16_t float_to_s16(float x) {
 // ---------------------------------------------------------------------------
 struct P303 {
     rosic::Open303 engine;
-    guitarml::GuitarMLAmp overdrive;
+    drive::Drive   drive_fx;
 
     std::string module_dir;
-    std::vector<std::string> model_list;  // relative paths without .json
 
     // Normalized param state (0..1). Mirrors module.json defaults.
     float n_cutoff     = 0.5f;
@@ -107,10 +102,9 @@ struct P303 {
     float n_slide_time        = 0.3f;
     float n_tanh_shaper_drive = 0.0f;
 
-    int   overdrive_switch     = 0;
-    float n_overdrive_level    = 0.5f;
-    float n_overdrive_dry_wet  = 0.5f;
-    std::string overdrive_model;
+    int   drive_model = 0;      // 0=Soft, 1=RAT
+    float n_drive     = 0.0f;   // 0 = bypass
+    float n_drive_mix = 1.0f;
 
     // Decay range depends on devil_mod_switch (Devilfish: 30-3000, stock: 200-2000).
     double decayMin = 200.0;
@@ -155,40 +149,6 @@ static void apply_devil_mods(P303 *p) {
 }
 
 // ---------------------------------------------------------------------------
-// Model discovery
-// ---------------------------------------------------------------------------
-static void scan_models_dir(P303 *p, const std::string &dir, const std::string &prefix) {
-    DIR *d = opendir(dir.c_str());
-    if (!d) return;
-    struct dirent *ent;
-    while ((ent = readdir(d)) != nullptr) {
-        const std::string dn(ent->d_name);
-        if (!dn.empty() && dn[0] == '.') continue;
-        const std::string full = dir + std::string("/") + dn;
-        struct stat st;
-        if (stat(full.c_str(), &st) != 0) continue;
-        if (S_ISDIR(st.st_mode)) {
-            const std::string sub_prefix = prefix.empty() ? dn : (prefix + "/" + dn);
-            scan_models_dir(p, full, sub_prefix);
-        } else {
-            const size_t n = dn.size();
-            if (n > 5 && dn.compare(n - 5, 5, ".json") == 0) {
-                const std::string name = dn.substr(0, n - 5);
-                const std::string rel = prefix.empty() ? name : (prefix + "/" + name);
-                p->model_list.push_back(rel);
-            }
-        }
-    }
-    closedir(d);
-}
-
-static bool load_model_by_name(P303 *p, const std::string &name) {
-    if (name.empty()) return false;
-    std::string path = p->module_dir + "/models/" + name + ".json";
-    return p->overdrive.loadModelFromFile(path);
-}
-
-// ---------------------------------------------------------------------------
 // v2 API
 // ---------------------------------------------------------------------------
 static void* v2_create(const char *module_dir, const char *json_defaults) {
@@ -197,7 +157,8 @@ static void* v2_create(const char *module_dir, const char *json_defaults) {
     p->module_dir = module_dir ? module_dir : "";
 
     p->engine.setSampleRate(static_cast<double>(MOVE_SAMPLE_RATE));
-    p->overdrive.prepare(static_cast<double>(MOVE_SAMPLE_RATE));
+    p->drive_fx.prepare(static_cast<double>(MOVE_SAMPLE_RATE));
+    p->drive_fx.set_model(p->drive_model);
 
     apply_waveform(p, p->waveform);
     apply_cutoff(p);
@@ -207,25 +168,6 @@ static void* v2_create(const char *module_dir, const char *json_defaults) {
     apply_volume(p);
     apply_tuning(p);
     apply_devil_mods(p);  // sets decay range then calls apply_decay
-
-    // Enumerate available models once; the list is stable across the session.
-    if (!p->module_dir.empty()) {
-        scan_models_dir(p, p->module_dir + "/models", std::string{});
-        std::sort(p->model_list.begin(), p->model_list.end());
-    }
-
-    // Default model: prefer TS9_DriveKnob (classic tube screamer pairs well
-    // with a 303), otherwise fall back to the first entry.
-    if (!p->model_list.empty()) {
-        p->overdrive_model = p->model_list.front();
-        for (const auto &m : p->model_list) {
-            if (m == "jc303/TS9_DriveKnob") {
-                p->overdrive_model = m;
-                break;
-            }
-        }
-        load_model_by_name(p, p->overdrive_model);
-    }
 
     return p;
 }
@@ -247,9 +189,7 @@ static void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) 
         const int note = msg[1] & 0x7F;
         p->engine.noteOn(note, 0, 0.0);
     } else if (status == 0xB0 && len >= 3) {
-        // CC mapping for the 8 front-panel params. Conventions honored where
-        // they exist (74=cutoff, 71=resonance, 75=decay, 7=volume); GM2 effect
-        // controllers (12/13) for overdrive; GP1 (16) for accent.
+        // CC mapping honoring GM2/MPE conventions where applicable.
         const uint8_t cc  = msg[1] & 0x7F;
         const uint8_t val = msg[2] & 0x7F;
         const float nv = val / 127.0f;
@@ -260,8 +200,8 @@ static void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) 
             case 75: p->n_decay     = nv; apply_decay(p);     break;
             case 16: p->n_accent    = nv; apply_accent(p);    break;
             case 7:  p->n_volume    = nv; apply_volume(p);    break;
-            case 12: p->n_overdrive_level   = nv; break;
-            case 13: p->n_overdrive_dry_wet = nv; break;
+            case 12: p->n_drive     = nv; break;
+            case 13: p->n_drive_mix = nv; break;
             case 123: p->engine.allNotesOff(); break;
             default: break;
         }
@@ -284,24 +224,6 @@ static int json_extract_number(const char *json, const char *key, double *out) {
     return 0;
 }
 
-static int json_extract_string(const char *json, const char *key, char *buf, size_t buf_len) {
-    char search[64];
-    std::snprintf(search, sizeof(search), "\"%s\":", key);
-    const char *pos = std::strstr(json, search);
-    if (!pos) return -1;
-    pos += std::strlen(search);
-    while (*pos == ' ' || *pos == '\t') pos++;
-    if (*pos != '"') return -1;
-    pos++;
-    const char *end = std::strchr(pos, '"');
-    if (!end) return -1;
-    size_t n = static_cast<size_t>(end - pos);
-    if (n >= buf_len) n = buf_len - 1;
-    std::memcpy(buf, pos, n);
-    buf[n] = '\0';
-    return 0;
-}
-
 static void v2_set_param(void *instance, const char *key, const char *val) {
     if (!instance || !key || !val) return;
     P303 *p = static_cast<P303 *>(instance);
@@ -311,7 +233,6 @@ static void v2_set_param(void *instance, const char *key, const char *val) {
     // remapped to the wrong range.
     if (!std::strcmp(key, "state")) {
         double d;
-        char sbuf[128];
         char vbuf[32];
 
         if (json_extract_number(val, "devil_mod_switch", &d) == 0) {
@@ -322,7 +243,7 @@ static void v2_set_param(void *instance, const char *key, const char *val) {
         static const char *const float_keys[] = {
             "cutoff", "resonance", "env_mod", "decay", "accent", "volume", "tuning",
             "normal_decay", "accent_decay", "feedback_hpf", "soft_attack",
-            "slide_time", "tanh_shaper_drive", "overdrive_level", "overdrive_dry_wet",
+            "slide_time", "tanh_shaper_drive", "drive", "drive_mix",
             nullptr
         };
         for (int i = 0; float_keys[i]; i++) {
@@ -332,16 +253,12 @@ static void v2_set_param(void *instance, const char *key, const char *val) {
             }
         }
 
-        static const char *const int_keys[] = { "waveform", "overdrive_switch", nullptr };
+        static const char *const int_keys[] = { "waveform", "drive_model", nullptr };
         for (int i = 0; int_keys[i]; i++) {
             if (json_extract_number(val, int_keys[i], &d) == 0) {
                 std::snprintf(vbuf, sizeof(vbuf), "%d", static_cast<int>(d));
                 v2_set_param(instance, int_keys[i], vbuf);
             }
-        }
-
-        if (json_extract_string(val, "overdrive_model", sbuf, sizeof(sbuf)) == 0) {
-            v2_set_param(instance, "overdrive_model", sbuf);
         }
         return;
     }
@@ -363,22 +280,9 @@ static void v2_set_param(void *instance, const char *key, const char *val) {
     else if (!std::strcmp(key, "soft_attack")      ) { p->n_soft_attack       = fv; if (p->devil_mod_switch) apply_devil_mods(p); }
     else if (!std::strcmp(key, "slide_time")       ) { p->n_slide_time        = fv; if (p->devil_mod_switch) apply_devil_mods(p); }
     else if (!std::strcmp(key, "tanh_shaper_drive")) { p->n_tanh_shaper_drive = fv; if (p->devil_mod_switch) apply_devil_mods(p); }
-    else if (!std::strcmp(key, "overdrive_switch"))   { p->overdrive_switch    = std::atoi(val); }
-    else if (!std::strcmp(key, "overdrive_level"))    { p->n_overdrive_level   = fv; }
-    else if (!std::strcmp(key, "overdrive_dry_wet"))  { p->n_overdrive_dry_wet = fv; }
-    else if (!std::strcmp(key, "overdrive_model"))    {
-        // Value can be either a model name (string path) or an integer index.
-        std::string name;
-        char *endp = nullptr;
-        long idx = std::strtol(val, &endp, 10);
-        if (endp != val && *endp == '\0' && idx >= 0 &&
-            static_cast<size_t>(idx) < p->model_list.size()) {
-            name = p->model_list[idx];
-        } else {
-            name = val;
-        }
-        if (load_model_by_name(p, name)) p->overdrive_model = name;
-    }
+    else if (!std::strcmp(key, "drive_model"))      { p->drive_model = std::atoi(val); p->drive_fx.set_model(p->drive_model); }
+    else if (!std::strcmp(key, "drive"))            { p->n_drive     = fv; }
+    else if (!std::strcmp(key, "drive_mix"))        { p->n_drive_mix = fv; }
 }
 
 static int v2_get_param(void *instance, const char *key, char *buf, int buf_len) {
@@ -408,10 +312,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
         SA(",\"soft_attack\":%.6f", static_cast<double>(p->n_soft_attack));
         SA(",\"slide_time\":%.6f", static_cast<double>(p->n_slide_time));
         SA(",\"tanh_shaper_drive\":%.6f", static_cast<double>(p->n_tanh_shaper_drive));
-        SA(",\"overdrive_switch\":%d", p->overdrive_switch);
-        SA(",\"overdrive_level\":%.6f", static_cast<double>(p->n_overdrive_level));
-        SA(",\"overdrive_dry_wet\":%.6f", static_cast<double>(p->n_overdrive_dry_wet));
-        SA(",\"overdrive_model\":\"%s\"", p->overdrive_model.c_str());
+        SA(",\"drive_model\":%d", p->drive_model);
+        SA(",\"drive\":%.6f", static_cast<double>(p->n_drive));
+        SA(",\"drive_mix\":%.6f", static_cast<double>(p->n_drive_mix));
         SA("%s", "}");
         #undef SA
         return n;
@@ -432,21 +335,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
     if (!std::strcmp(key, "soft_attack"))       return emit(p->n_soft_attack);
     if (!std::strcmp(key, "slide_time"))        return emit(p->n_slide_time);
     if (!std::strcmp(key, "tanh_shaper_drive")) return emit(p->n_tanh_shaper_drive);
-    if (!std::strcmp(key, "overdrive_switch"))   return emit_i(p->overdrive_switch);
-    if (!std::strcmp(key, "overdrive_level"))    return emit(p->n_overdrive_level);
-    if (!std::strcmp(key, "overdrive_dry_wet"))  return emit(p->n_overdrive_dry_wet);
-    if (!std::strcmp(key, "overdrive_model"))    return std::snprintf(buf, buf_len, "%s", p->overdrive_model.c_str());
-    if (!std::strcmp(key, "overdrive_model_list")) {
-        int pos = 0;
-        pos += std::snprintf(buf + pos, buf_len - pos, "[");
-        for (size_t i = 0; i < p->model_list.size() && pos < buf_len - 2; ++i) {
-            if (i > 0) pos += std::snprintf(buf + pos, buf_len - pos, ",");
-            pos += std::snprintf(buf + pos, buf_len - pos,
-                "{\"label\":\"%s\",\"index\":%zu}", p->model_list[i].c_str(), i);
-        }
-        pos += std::snprintf(buf + pos, buf_len - pos, "]");
-        return pos;
-    }
+    if (!std::strcmp(key, "drive_model"))       return emit_i(p->drive_model);
+    if (!std::strcmp(key, "drive"))             return emit(p->n_drive);
+    if (!std::strcmp(key, "drive_mix"))         return emit(p->n_drive_mix);
 
     // Shadow UI queries these directly on the DSP plugin.
     if (!std::strcmp(key, "ui_hierarchy")) {
@@ -458,12 +349,12 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
                     "\"name\":\"303\","
                     "\"children\":null,"
                     "\"knobs\":[\"cutoff\",\"resonance\",\"env_mod\",\"decay\","
-                               "\"accent\",\"volume\",\"overdrive_level\",\"overdrive_dry_wet\"],"
+                               "\"accent\",\"volume\",\"drive\",\"drive_mix\"],"
                     "\"params\":["
                         "\"cutoff\",\"resonance\",\"env_mod\",\"decay\","
                         "\"accent\",\"volume\",\"waveform\",\"tuning\","
                         "{\"level\":\"devilfish\",\"label\":\"Devilfish Mods\"},"
-                        "{\"level\":\"overdrive\",\"label\":\"Overdrive\"}"
+                        "{\"level\":\"drive\",\"label\":\"Drive\"}"
                     "]"
                 "},"
                 "\"devilfish\":{"
@@ -475,20 +366,12 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
                                 "\"feedback_hpf\",\"soft_attack\",\"slide_time\",\"tanh_shaper_drive\"],"
                     "\"navigate_to\":\"root\""
                 "},"
-                "\"overdrive\":{"
-                    "\"name\":\"Overdrive\","
+                "\"drive\":{"
+                    "\"name\":\"Drive\","
                     "\"children\":null,"
-                    "\"knobs\":[\"overdrive_level\",\"overdrive_dry_wet\"],"
-                    "\"params\":[\"overdrive_switch\",\"overdrive_level\",\"overdrive_dry_wet\","
-                                "{\"level\":\"overdrive_model\",\"label\":\"Model\"}],"
+                    "\"knobs\":[\"drive\",\"drive_mix\"],"
+                    "\"params\":[\"drive_model\",\"drive\",\"drive_mix\"],"
                     "\"navigate_to\":\"root\""
-                "},"
-                "\"overdrive_model\":{"
-                    "\"name\":\"Overdrive Model\","
-                    "\"label\":\"Select Model\","
-                    "\"items_param\":\"overdrive_model_list\","
-                    "\"select_param\":\"overdrive_model\","
-                    "\"navigate_to\":\"overdrive\""
                 "}"
             "}"
             "}";
@@ -516,9 +399,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
             "{\"key\":\"soft_attack\",\"name\":\"Soft Attack\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0},"
             "{\"key\":\"slide_time\",\"name\":\"Slide Time\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.3},"
             "{\"key\":\"tanh_shaper_drive\",\"name\":\"Shaper Drive\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0},"
-            "{\"key\":\"overdrive_switch\",\"name\":\"Overdrive\",\"type\":\"enum\",\"options\":[\"Off\",\"On\"],\"default\":0},"
-            "{\"key\":\"overdrive_level\",\"name\":\"Drive Level\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5},"
-            "{\"key\":\"overdrive_dry_wet\",\"name\":\"Dry/Wet\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0.5}"
+            "{\"key\":\"drive_model\",\"name\":\"Model\",\"type\":\"enum\",\"options\":[\"Soft\",\"RAT\"],\"default\":0},"
+            "{\"key\":\"drive\",\"name\":\"Drive\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":0},"
+            "{\"key\":\"drive_mix\",\"name\":\"Mix\",\"type\":\"float\",\"min\":0,\"max\":1,\"step\":0.02,\"default\":1}"
             "]";
         const int len = static_cast<int>(std::strlen(cp));
         if (len >= buf_len) return -1;
@@ -549,21 +432,8 @@ static void v2_render_block(void *instance, int16_t *out, int frames) {
     for (int i = 0; i < frames; ++i)
         mono[i] = static_cast<float>(p->engine.getSample());
 
-    if (p->overdrive_switch && p->overdrive.isLoaded()) {
-        float dry[MOVE_FRAMES_PER_BLOCK];
-        std::memcpy(dry, mono, sizeof(float) * frames);
-
-        // Pre-gain: push hotter into the RNN when level > 0.5.
-        const float pre = std::pow(10.0f, (linToLin(p->n_overdrive_level, 0, 1, -12.0f, 18.0f)) / 20.0f);
-        for (int i = 0; i < frames; ++i) mono[i] *= pre;
-
-        p->overdrive.process(mono, frames, p->n_overdrive_level);
-
-        const float wet = p->n_overdrive_dry_wet;
-        const float dryg = 1.0f - wet;
-        for (int i = 0; i < frames; ++i)
-            mono[i] = dry[i] * dryg + mono[i] * wet;
-    }
+    // Drive stage (Soft tanh or RAT — fully bypassed at drive=0 or mix=0).
+    p->drive_fx.process(mono, frames, p->n_drive, p->n_drive_mix);
 
     for (int i = 0; i < frames; ++i) {
         const int16_t s = float_to_s16(mono[i]);

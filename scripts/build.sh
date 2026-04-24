@@ -33,8 +33,8 @@ CXX="${CXX:-${CROSS_PREFIX}g++}"
 rm -rf dist build
 mkdir -p "$DIST_DIR" build
 
-# Sources: plugin entry + Open303 + GuitarML.
-# Open303 also includes a C file (fft4g.c) — built via the C compiler.
+# Sources: plugin entry + Open303. Open303 includes a C file (fft4g.c) —
+# built via the C compiler. Drive stage (Soft + RAT) is header-only (drive.h).
 CC="${CC:-${CROSS_PREFIX}gcc}"
 
 # Compile C sources first.
@@ -47,19 +47,14 @@ for c in src/dsp/open303/*.c; do
 done
 
 # C++ sources.
-CXX_SRCS=(src/dsp/plugin.cpp src/dsp/guitarml/guitarml_amp.cpp)
+CXX_SRCS=(src/dsp/plugin.cpp)
 for f in src/dsp/open303/*.cpp; do CXX_SRCS+=("$f"); done
 
-# Eigen is vendored at deps/Eigen/Eigen/... so deps/Eigen is the include root
-# for "#include <Eigen/Dense>". RTNeural headers use a configurable backend;
-# we force Eigen (matches jc303 via chowdsp).
-INCLUDES=(-Isrc/dsp -Isrc/dsp/open303 -Isrc/dsp/guitarml \
-          -Isrc/dsp/deps -Isrc/dsp/deps/Eigen -Isrc/dsp/deps/RTNeural)
+INCLUDES=(-Isrc/dsp -Isrc/dsp/open303)
 
 echo "Compiling DSP..."
 "$CXX" -O3 -fPIC -shared -std=c++17 \
     -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare \
-    -DRTNEURAL_USE_EIGEN=1 -DRTNEURAL_NO_DEBUG=1 \
     "${INCLUDES[@]}" \
     "${CXX_SRCS[@]}" "${C_OBJS[@]}" \
     -o build/dsp.so \
@@ -72,14 +67,6 @@ chmod 0755 "$DIST_DIR/dsp.so"
 cat src/module.json > "$DIST_DIR/module.json"
 cat src/ui.js > "$DIST_DIR/ui.js"
 [ -f src/help.json ] && cat src/help.json > "$DIST_DIR/help.json" || true
-
-if [ -d src/models ]; then
-    mkdir -p "$DIST_DIR/models"
-    (cd src/models && find . -name '*.json' -print0 | while IFS= read -r -d '' f; do
-        mkdir -p "$REPO_ROOT/$DIST_DIR/models/$(dirname "$f")"
-        cat "$f" > "$REPO_ROOT/$DIST_DIR/models/$f"
-    done)
-fi
 
 (cd dist && tar -czf "${MODULE_ID}-module.tar.gz" "${MODULE_ID}/")
 
