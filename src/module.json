@@ -2,9 +2,9 @@
   "id": "303",
   "name": "303",
   "abbrev": "303",
-  "version": "0.2.0",
-  "description": "TB-303 emulator (Open303 + Devilfish + GuitarML overdrive)",
-  "author": "Robin Schmidt / midilab / Charles Vestal",
+  "version": "0.3.0",
+  "description": "TB-303 emulator (Open303 + Devilfish + Soft/RAT drive)",
+  "author": "Robin Schmidt / midilab / davemollen / Charles Vestal",
   "license": "GPL-3.0",
   "ui": "ui.js",
   "dsp": "dsp.so",
@@ -30,7 +30,7 @@
             { "key": "waveform",     "label": "Waveform",  "type": "enum",  "options": ["Saw", "Square"], "default": 0 },
             { "key": "tuning",       "label": "Tuning",    "type": "float", "min": 0.0, "max": 1.0, "default": 0.5,  "step": 0.01 },
             { "level": "devilfish",  "label": "Devilfish Mods" },
-            { "level": "overdrive",  "label": "Overdrive" }
+            { "level": "drive",      "label": "Drive" }
           ],
           "knobs": [
             "cutoff",
@@ -39,8 +39,8 @@
             "decay",
             "accent",
             "volume",
-            "overdrive_level",
-            "overdrive_dry_wet"
+            "drive",
+            "drive_mix"
           ]
         },
         "devilfish": {
@@ -56,22 +56,14 @@
           ],
           "navigate_to": "root"
         },
-        "overdrive": {
-          "name": "Overdrive",
+        "drive": {
+          "name": "Drive",
           "params": [
-            { "key": "overdrive_switch",   "label": "Enable",   "type": "enum",  "options": ["Off", "On"], "default": 0 },
-            { "key": "overdrive_level",    "label": "Level",    "type": "float", "min": 0.0, "max": 1.0, "default": 0.5, "step": 0.02, "unit": "%" },
-            { "key": "overdrive_dry_wet",  "label": "Dry/Wet",  "type": "float", "min": 0.0, "max": 1.0, "default": 0.5, "step": 0.02, "unit": "%" },
-            { "level": "overdrive_model",  "label": "Model" }
+            { "key": "drive_model", "label": "Model", "type": "enum",  "options": ["Soft", "RAT"], "default": 0 },
+            { "key": "drive",       "label": "Drive", "type": "float", "min": 0.0, "max": 1.0, "default": 0.0, "step": 0.02, "unit": "%" },
+            { "key": "drive_mix",   "label": "Mix",   "type": "float", "min": 0.0, "max": 1.0, "default": 1.0, "step": 0.02, "unit": "%" }
           ],
           "navigate_to": "root"
-        },
-        "overdrive_model": {
-          "name": "Overdrive Model",
-          "label": "Select Model",
-          "items_param": "overdrive_model_list",
-          "select_param": "overdrive_model",
-          "navigate_to": "overdrive"
         }
       }
     }

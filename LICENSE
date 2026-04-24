@@ -1,3 +1,28 @@
+schwung-303 — TB-303 emulator for Schwung
+
+Copyright (C) 2026 Charles Vestal and contributors.
+Copyright (C) midilab / jc303 contributors (Devilfish extensions to Open303).
+Copyright (C) Dave Mollen (davemollen/dm-Rat — RAT drive model port).
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+The Open303 engine core (src/dsp/open303/) is separately licensed under
+the MIT license by Robin Schmidt; see src/dsp/open303/LICENSE for its text.
+When distributing this work as a whole under GPL-3.0, the MIT-licensed
+Open303 components are compatible with and included under the combined
+GPL-3.0 terms, per the MIT license's permissive grant.
+
+See README.md for full third-party attribution.
+
+--------------------------------------------------------------------------
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

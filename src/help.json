@@ -1,13 +1,13 @@
 {
     "title": "303",
-    "subtitle": "TB-303 emulator (Open303 + Devilfish + GuitarML overdrive)",
+    "subtitle": "TB-303 emulator (Open303 + Devilfish + Soft/RAT drive)",
     "sections": [
         {
             "heading": "Overview",
             "body": [
                 "Monophonic bass synth based on Robin Schmidt's Open303 engine,",
-                "with midilab's Devilfish-inspired extensions and GuitarML's",
-                "neural-network overdrive (197 amp/pedal models bundled).",
+                "with midilab's Devilfish-inspired extensions and a lightweight",
+                "two-model drive stage (classic tanh softclip + ProCo RAT port).",
                 "",
                 "No sequencer — drive it with any MIDI source. Pairs well with",
                 "TB-3PO in a shadow slot for generative acid basslines."
@@ -16,15 +16,14 @@
         {
             "heading": "Knobs (8 front panel)",
             "body": [
-                "1  Cutoff       — filter cutoff (exp 314–2394 Hz)",
-                "2  Resonance    — filter resonance (0–100%)",
-                "3  Env Mod      — envelope → cutoff amount",
-                "4  Decay        — main envelope decay",
-                "5  Accent       — accent amount",
-                "6  Volume       — output level",
-                "7  Drive Level  — overdrive pre-gain (also input for",
-                "                 conditioned GuitarML models)",
-                "8  Dry/Wet      — overdrive blend (0 = bypass)"
+                "1  Cutoff     — filter cutoff (exp 314–2394 Hz)",
+                "2  Resonance  — filter resonance (0–100%)",
+                "3  Env Mod    — envelope → cutoff amount",
+                "4  Decay      — main envelope decay",
+                "5  Accent     — accent amount",
+                "6  Volume     — output level",
+                "7  Drive      — saturation amount (0 = bypass)",
+                "8  Mix        — drive dry/wet blend"
             ]
         },
         {
@@ -43,8 +42,8 @@
                 "  CC 75  Decay",
                 "  CC 16  Accent",
                 "  CC 7   Volume",
-                "  CC 12  Overdrive Level",
-                "  CC 13  Overdrive Dry/Wet",
+                "  CC 12  Drive",
+                "  CC 13  Mix",
                 "  CC 123 All Notes Off"
             ]
         },
@@ -65,16 +64,21 @@
             ]
         },
         {
-            "heading": "Overdrive",
+            "heading": "Drive",
             "body": [
-                "Neural-network amp/pedal modelling via RTNeural. 37 classic",
-                "amp/pedal captures (TS9, RAT, Big Muff, Princeton, Mesa Mini",
-                "Rec, Dumble Kit, etc.) — the jc303 default set.",
+                "Two models, selected under the Drive submenu.",
                 "",
-                "Off:  bypass (no CPU cost).",
-                "On:   signal runs through the chosen model. Use Drive Level",
-                "      to push harder; use Dry/Wet to blend with clean.",
-                "      Default model: jc303/TS9_DriveKnob."
+                "  Soft  — tilt-EQ + 2x oversample + asymmetric tanh.",
+                "          Generic warm softclip, most flat / neutral.",
+                "          Good for gentle thickening without strong color.",
+                "",
+                "  RAT   — ProCo RAT port from davemollen/dm-Rat.",
+                "          3rd-order op-amp IIR + algebraic waveshaper",
+                "          x/(1+x⁴)^(1/4) around 2x oversampling, fixed-mid",
+                "          tone stack. Aggressive and distinctively gritty.",
+                "",
+                "Drive = 0 fully bypasses the stage (zero CPU cost).",
+                "Mix blends with the clean synth signal."
             ]
         },
         {
@@ -82,8 +86,7 @@
             "body": [
                 "Open303 engine: Robin Schmidt (MIT)",
                 "Devilfish mod params: midilab / jc303 (GPL-3.0)",
-                "Neural overdrive: GuitarML BYOD (MIT) via RTNeural (BSD-3)",
-                "Tone models: GuitarML Proteus Tone Packs",
+                "RAT drive model: davemollen/dm-Rat (GPL-3.0)",
                 "Schwung port: Charles Vestal — GPL-3.0"
             ]
         }
