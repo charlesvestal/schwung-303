@@ -1,6 +1,6 @@
 {
-    "version": "0.3.2",
-    "download_url": "https://github.com/charlesvestal/schwung-303/releases/download/v0.3.2/303-module.tar.gz",
+    "version": "0.3.3",
+    "download_url": "https://github.com/charlesvestal/schwung-303/releases/download/v0.3.3/303-module.tar.gz",
     "name": "303",
     "description": "TB-303 emulator (Open303 + Devilfish + Soft/RAT drive)",
     "repo_url": "https://github.com/charlesvestal/schwung-303"
