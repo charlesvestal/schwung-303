@@ -38,7 +38,7 @@ jobs:
               "version": "${VERSION}",
               "download_url": "${URL}",
               "name": "303",
-              "description": "TB-303 emulator (Open303 + Devilfish + GuitarML overdrive)",
+              "description": "TB-303 emulator (Open303 + Devilfish + Soft/RAT drive)",
               "repo_url": "https://github.com/${{ github.repository }}"
           }
           EOF
