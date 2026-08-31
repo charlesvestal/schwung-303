@@ -1,94 +1,183 @@
 {
-    "title": "303",
-    "subtitle": "TB-303 emulator (Open303 + Devilfish + Soft/RAT drive)",
-    "sections": [
-        {
-            "heading": "Overview",
-            "body": [
-                "Monophonic bass synth based on Robin Schmidt's Open303 engine,",
-                "with midilab's Devilfish-inspired extensions and a lightweight",
-                "two-model drive stage (classic tanh softclip + ProCo RAT port).",
-                "",
-                "No sequencer — drive it with any MIDI source. Pairs well with",
-                "TB-3PO in a shadow slot for generative acid basslines."
-            ]
-        },
-        {
-            "heading": "Knobs (8 front panel)",
-            "body": [
-                "1  Cutoff     — filter cutoff (exp 314–2394 Hz)",
-                "2  Resonance  — filter resonance (0–100%)",
-                "3  Env Mod    — envelope → cutoff amount",
-                "4  Decay      — main envelope decay",
-                "5  Accent     — accent amount",
-                "6  Volume     — output level",
-                "7  Drive      — saturation amount (0 = bypass)",
-                "8  Mix        — drive dry/wet blend"
-            ]
-        },
-        {
-            "heading": "MIDI",
-            "body": [
-                "Notes: standard note-on / note-off drive pitch and gate.",
-                "Accent: velocity ≥ 100 triggers Open303's accent envelope.",
-                "Slide:  overlapping notes (next note-on before previous",
-                "        note-off) triggers legato slide — matches TB-3PO's",
-                "        emission convention natively.",
-                "",
-                "CC map (honors GM2/MPE conventions where applicable):",
-                "  CC 74  Cutoff",
-                "  CC 71  Resonance",
-                "  CC 70  Env Mod",
-                "  CC 75  Decay",
-                "  CC 16  Accent",
-                "  CC 7   Volume",
-                "  CC 12  Drive",
-                "  CC 13  Mix",
-                "  CC 123 All Notes Off"
-            ]
-        },
-        {
-            "heading": "Devilfish Mods",
-            "body": [
-                "Off: stock 303 behavior. Mod knobs are inert.",
-                "On:  Devilfish-inspired extensions from the real TB-303 mod",
-                "     kit, implemented in the Open303 engine.",
-                "",
-                "     Normal Decay   30 ms – 3 s (stock: fixed ~1.2 s)",
-                "     Accent Decay   30 ms – 3 s (stock: fixed 200 ms)",
-                "     Feedback HPF   cuts bass from filter self-feedback",
-                "                    — most audible at high resonance",
-                "     Soft Attack    0.3 ms – 3 s attack for non-accented notes",
-                "     Slide Time     2 – 360 ms",
-                "     Shaper Drive   tanh waveshaper before the filter"
-            ]
-        },
-        {
-            "heading": "Drive",
-            "body": [
-                "Two models, selected under the Drive submenu.",
-                "",
-                "  Soft  — tilt-EQ + 2x oversample + asymmetric tanh.",
-                "          Generic warm softclip, most flat / neutral.",
-                "          Good for gentle thickening without strong color.",
-                "",
-                "  RAT   — ProCo RAT port from davemollen/dm-Rat.",
-                "          3rd-order op-amp IIR + algebraic waveshaper",
-                "          x/(1+x⁴)^(1/4) around 2x oversampling, fixed-mid",
-                "          tone stack. Aggressive and distinctively gritty.",
-                "",
-                "Drive = 0 fully bypasses the stage (zero CPU cost).",
-                "Mix blends with the clean synth signal."
-            ]
-        },
-        {
-            "heading": "Credits",
-            "body": [
-                "Open303 engine: Robin Schmidt (MIT)",
-                "Devilfish mod params: midilab / jc303 (GPL-3.0)",
-                "RAT drive model: davemollen/dm-Rat (GPL-3.0)",
-                "Schwung port: Charles Vestal — GPL-3.0"
-            ]
-        }
-    ]
+  "title": "303",
+  "children": [
+    {
+      "title": "Overview",
+      "lines": [
+        "Monophonic acid bass",
+        "synth built on Robin",
+        "Schmidt's Open303",
+        "engine, with",
+        "Devilfish-inspired",
+        "mods and a two-model",
+        "drive stage.",
+        "",
+        "No sequencer of its",
+        "own - drive it from",
+        "any MIDI source.",
+        "Pairs well with TB-3PO",
+        "in another slot for",
+        "generative acid."
+      ]
+    },
+    {
+      "title": "Knobs",
+      "lines": [
+        "1 Cutoff",
+        "  filter cutoff,",
+        "  314 Hz to 2394 Hz",
+        "2 Resonance",
+        "3 Env Mod",
+        "  envelope to cutoff",
+        "4 Decay",
+        "  main env decay",
+        "5 Accent",
+        "  accent amount",
+        "6 Volume",
+        "7 Waveform",
+        "  Saw or Square",
+        "8 Tuning",
+        "",
+        "Drive and Mix are not",
+        "on this page - they",
+        "live under Drive."
+      ]
+    },
+    {
+      "title": "Playing It",
+      "lines": [
+        "Notes: note-on and",
+        "note-off drive pitch",
+        "and gate.",
+        "",
+        "Accent: any note with",
+        "velocity 100 or above",
+        "fires the accent",
+        "envelope. Play softer",
+        "than that for an",
+        "unaccented note.",
+        "",
+        "Slide: overlap two",
+        "notes - send the",
+        "next note-on before",
+        "the previous note-off",
+        "and it slides between",
+        "them. This is the",
+        "same convention that",
+        "TB-3PO emits, so the",
+        "two work together",
+        "with no setup."
+      ]
+    },
+    {
+      "title": "MIDI CCs",
+      "lines": [
+        "CC 74  Cutoff",
+        "CC 71  Resonance",
+        "CC 70  Env Mod",
+        "CC 75  Decay",
+        "CC 16  Accent",
+        "CC 7   Volume",
+        "CC 12  Drive",
+        "CC 13  Mix",
+        "CC 123 All Notes Off",
+        "",
+        "Waveform and Tuning",
+        "have no CC. Set them",
+        "from the knobs."
+      ]
+    },
+    {
+      "title": "Devilfish Mods",
+      "lines": [
+        "A submenu off the",
+        "main page.",
+        "",
+        "Enable Off: stock 303",
+        "behaviour, and the",
+        "other knobs here do",
+        "nothing at all.",
+        "",
+        "Enable On: extensions",
+        "modelled on the real",
+        "TB-303 Devilfish mod",
+        "kit.",
+        "",
+        "Normal Decay",
+        "  30 ms to 3 s",
+        "  (stock is fixed at",
+        "  about 1.2 s)",
+        "Accent Decay",
+        "  30 ms to 3 s",
+        "  (stock is fixed at",
+        "  200 ms)",
+        "Feedback HPF",
+        "  cuts bass out of",
+        "  the filter's self-",
+        "  feedback. Most",
+        "  audible at high",
+        "  resonance.",
+        "Soft Attack",
+        "  0.3 ms to 3 s, on",
+        "  unaccented notes",
+        "Slide Time",
+        "  2 ms to 360 ms",
+        "Shaper Drive",
+        "  tanh waveshaper",
+        "  before the filter"
+      ]
+    },
+    {
+      "title": "Drive",
+      "lines": [
+        "A submenu off the",
+        "main page. Two",
+        "models:",
+        "",
+        "Soft",
+        "  tilt EQ, 2x over-",
+        "  sampling and an",
+        "  asymmetric tanh.",
+        "  Warm and fairly",
+        "  neutral - good for",
+        "  thickening without",
+        "  much colour.",
+        "",
+        "RAT",
+        "  a ProCo RAT model",
+        "  from dm-Rat: 3rd",
+        "  order op-amp IIR",
+        "  and an algebraic",
+        "  waveshaper at 2x,",
+        "  fixed mid tone",
+        "  stack. Aggressive",
+        "  and gritty.",
+        "",
+        "Drive at 0 bypasses",
+        "the stage completely",
+        "and costs no CPU.",
+        "Mix blends it against",
+        "the clean signal."
+      ]
+    },
+    {
+      "title": "Credits",
+      "lines": [
+        "Open303 engine:",
+        " Robin Schmidt (MIT)",
+        "",
+        "Devilfish params:",
+        " midilab / jc303",
+        " (GPL-3.0)",
+        "",
+        "RAT drive model:",
+        " davemollen/dm-Rat",
+        " (GPL-3.0)",
+        "",
+        "Schwung port:",
+        " Charles Vestal",
+        " (GPL-3.0)"
+      ]
+    }
+  ]
 }
