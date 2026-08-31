@@ -32,16 +32,45 @@ jobs:
           git fetch origin main
           git checkout main
           VERSION="${{ steps.version.outputs.version }}"
-          URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/303-module.tar.gz"
-          cat > release.json <<EOF
-          {
-              "version": "${VERSION}",
-              "download_url": "${URL}",
-              "name": "303",
-              "description": "TB-303 emulator (Open303 + Devilfish + Soft/RAT drive)",
-              "repo_url": "https://github.com/${{ github.repository }}"
-          }
-          EOF
+
+          # name and description are DERIVED from src/module.json, which is
+          # where they are actually maintained. They used to be hardcoded in
+          # this heredoc, and drifted: the description here still advertised
+          # the GuitarML overdrive months after it was replaced, and that
+          # string is what the Module Store shows.
+          #
+          # Any other field already in release.json (install_path, requires,
+          # download_url_core, ...) is preserved -- this step owns only the
+          # five keys it writes.
+          REPO="${{ github.repository }}" \
+          python3 - "$VERSION" <<'PY'
+          import json, os, sys
+
+          version = sys.argv[1]
+          repo = os.environ["REPO"]
+
+          with open("src/module.json") as f:
+              mod = json.load(f)
+
+          try:
+              with open("release.json") as f:
+                  rel = json.load(f)
+          except (OSError, ValueError):
+              rel = {}
+
+          rel["version"] = version
+          rel["download_url"] = (
+              f"https://github.com/{repo}/releases/download/v{version}/303-module.tar.gz"
+          )
+          rel["name"] = mod["name"]
+          rel["description"] = mod["description"]
+          rel["repo_url"] = f"https://github.com/{repo}"
+
+          with open("release.json", "w") as f:
+              json.dump(rel, f, indent=4)
+              f.write("\n")
+          PY
+
           git add release.json
           git diff --cached --quiet && exit 0
           git commit -m "release: v${VERSION}"
