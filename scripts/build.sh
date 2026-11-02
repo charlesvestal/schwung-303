@@ -68,6 +68,14 @@ cat src/module.json > "$DIST_DIR/module.json"
 cat src/ui.js > "$DIST_DIR/ui.js"
 [ -f src/help.json ] && cat src/help.json > "$DIST_DIR/help.json" || true
 
+# Licence texts. The binary is GPL-3.0 (jc303 Devilfish extensions, dm-Rat
+# RAT model); the Open303 core is MIT and its notice must travel with it.
+# Unconditional on purpose: a missing licence file must fail the build.
+mkdir -p "$DIST_DIR/licenses"
+cat LICENSE > "$DIST_DIR/LICENSE"
+cat NOTICE > "$DIST_DIR/NOTICE"
+cat src/dsp/open303/LICENSE > "$DIST_DIR/licenses/OPEN303_LICENSE.txt"
+
 (cd dist && tar -czf "${MODULE_ID}-module.tar.gz" "${MODULE_ID}/")
 
 echo "Built: $TARBALL"

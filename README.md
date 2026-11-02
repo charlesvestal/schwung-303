@@ -71,4 +71,4 @@ Schwung port and glue code: Charles Vestal.
 
 **GPL-3.0** — inherited from jc303 (Devilfish extensions) and dm-Rat (RAT drive model). The Open303 engine core itself remains MIT (Robin Schmidt's original licensing is preserved in `src/dsp/open303/LICENSE`).
 
-See [LICENSE](LICENSE) for the full GPL-3.0 text.
+See [LICENSE](LICENSE) for the full GPL-3.0 text and [NOTICE](NOTICE) for copyright holders.
